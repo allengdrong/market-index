@@ -1,7 +1,10 @@
 ﻿import os
+import urllib3
 from datetime import date, datetime, timedelta
 
 import requests
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 from sqlalchemy import select, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
@@ -31,7 +34,7 @@ def _fetch_usdkrw_rate(search_date: date, api_key: str) -> dict | None:
     }
 
     try:
-        resp = requests.get(KOREAEXIM_API_URL, params=params, timeout=10)
+        resp = requests.get(KOREAEXIM_API_URL, params=params, timeout=10, verify=False)
         resp.raise_for_status()
         data = resp.json()
     except Exception as exc:

@@ -1,0 +1,39 @@
+services:
+  # Backend API
+  - type: web
+    name: market-dashboard-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: market-index
+          property: connectionString
+      - key: KOSPI_API_KEY
+        sync: false
+      - key: EXIM_API_KEY
+        sync: false
+
+  # Daily sync cron job
+  - type: cron
+    name: market-data-sync
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    schedule: "0 9 * * *"  # 매일 오전 9시 (UTC 기준, 한국시간 18시)
+    command: python cron_sync.py
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: market-index
+          property: connectionString
+      - key: KOSPI_API_KEY
+        sync: false
+      - key: EXIM_API_KEY
+        sync: false
+
+databases:
+  - name: market-index
+    plan: free

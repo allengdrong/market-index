@@ -9,7 +9,13 @@ from sqlalchemy import select, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from app import config  # noqa: F401
+# config import는 로컬 개발용 (.env 로드)
+# GitHub Actions에서는 환경변수가 이미 주입됨
+try:
+    from app import config  # noqa: F401
+except Exception:
+    pass
+
 from app.db import SessionLocal
 from app.models import MarketSeries
 

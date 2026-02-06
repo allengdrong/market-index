@@ -62,7 +62,8 @@ def _fetch_usdkrw_rate(search_date: date, api_key: str) -> dict | None:
     return None
 
 
-def _fetch_kospi_latest(api_key: str) -> dict | None:
+def _fetch_kospi_week(api_key: str) -> list[dict]:
+    """최근 일주일치 KOSPI 데이터를 가져옴 (최대 10건)"""
     params = {
         "serviceKey": api_key,
         "numOfRows": 10,
@@ -76,25 +77,22 @@ def _fetch_kospi_latest(api_key: str) -> dict | None:
         data = resp.json()
     except Exception as exc:
         print(f"[sync] KOSPI API error: {exc}", flush=True)
-        return None
+        return []
 
     items = data.get("response", {}).get("body", {}).get("items", {}).get("item", [])
     if not items:
-        return None
+        return []
 
-    latest_item = None
-    latest_date = None
+    result = []
     for item in items:
         bas_dt = item.get("basDt", "")
         clpr = item.get("clpr", "0")
         if not bas_dt or not clpr:
             continue
         parsed_date = datetime.strptime(bas_dt, "%Y%m%d").date()
-        if latest_date is None or parsed_date > latest_date:
-            latest_date = parsed_date
-            latest_item = {"date": parsed_date, "value": float(clpr), "source": "data.go.kr"}
+        result.append({"date": parsed_date, "value": float(clpr), "source": "data.go.kr"})
 
-    return latest_item
+    return result
 
 
 def _upsert_market_series(db: Session, metric: str, series_date: date, value: float, source: str) -> None:
@@ -126,31 +124,42 @@ def run_sync(db: Session | None = None) -> dict:
         kospi_key = os.getenv("KOSPI_API_KEY") or os.getenv("DATA_GO_KR_API_KEY") or ""
         exim_key = os.getenv("EXIM_API_KEY") or ""
 
+        # KOSPI: 일주일치 backfill
         if kospi_key:
-            kospi_data = _fetch_kospi_latest(kospi_key)
-            if kospi_data:
-                _upsert_market_series(
-                    db,
-                    "kospi",
-                    kospi_data["date"],
-                    kospi_data["value"],
-                    kospi_data["source"],
-                )
-                result["kospi"] = kospi_data["date"].isoformat()
+            kospi_list = _fetch_kospi_week(kospi_key)
+            if kospi_list:
+                saved_dates = []
+                for kospi_data in kospi_list:
+                    _upsert_market_series(
+                        db,
+                        "kospi",
+                        kospi_data["date"],
+                        kospi_data["value"],
+                        kospi_data["source"],
+                    )
+                    saved_dates.append(kospi_data["date"].isoformat())
+                result["kospi"] = f"{len(saved_dates)} days: {saved_dates[0]}~{saved_dates[-1]}"
             else:
                 result["kospi"] = "no-data"
         else:
             result["kospi"] = "missing-api-key"
 
+        # USD/KRW: 일주일치 backfill
         if exim_key:
-            target_date = _resolve_exim_date(date.today())
-            exists_stmt = select(MarketSeries.id).where(
-                MarketSeries.metric == "usdkrw", MarketSeries.date == target_date
-            )
-            exists = db.execute(exists_stmt).first()
-            if exists:
-                result["usdkrw"] = "already-present"
-            else:
+            today = date.today()
+            saved_dates = []
+            for days_ago in range(7):
+                target_date = today - timedelta(days=days_ago)
+                # 주말은 건너뛰기
+                if target_date.weekday() >= 5:
+                    continue
+                # 이미 존재하면 건너뛰기
+                exists_stmt = select(MarketSeries.id).where(
+                    MarketSeries.metric == "usdkrw", MarketSeries.date == target_date
+                )
+                if db.execute(exists_stmt).first():
+                    continue
+                # API 호출
                 usd_data = _fetch_usdkrw_rate(target_date, exim_key)
                 if usd_data:
                     _upsert_market_series(
@@ -160,9 +169,11 @@ def run_sync(db: Session | None = None) -> dict:
                         usd_data["value"],
                         usd_data["source"],
                     )
-                    result["usdkrw"] = usd_data["date"].isoformat()
-                else:
-                    result["usdkrw"] = "no-data"
+                    saved_dates.append(usd_data["date"].isoformat())
+            if saved_dates:
+                result["usdkrw"] = f"{len(saved_dates)} days: {', '.join(saved_dates)}"
+            else:
+                result["usdkrw"] = "already-present or no-data"
         else:
             result["usdkrw"] = "missing-api-key"
 

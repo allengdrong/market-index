@@ -4,7 +4,7 @@ import sys
 import time
 from typing import Optional
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
@@ -62,6 +62,11 @@ async def log_requests(request: Request, call_next):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.head("/health")
+def health_head():
+    return Response(status_code=200)
 
 
 @app.get("/api/series")

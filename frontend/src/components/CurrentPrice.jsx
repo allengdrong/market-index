@@ -2,14 +2,12 @@ export default function CurrentPrice({ kospiData, usdkrwData }) {
   if (!kospiData?.series?.length || !usdkrwData?.series?.length) return null;
 
   const kospiLatest = kospiData.series[kospiData.series.length - 1];
-  const kospiPrev = kospiData.series[kospiData.series.length - 2];
   const usdkrwLatest = usdkrwData.series[usdkrwData.series.length - 1];
-  const usdkrwPrev = usdkrwData.series[usdkrwData.series.length - 2];
 
-  const kospiChange = kospiPrev ? kospiLatest.value - kospiPrev.value : 0;
-  const kospiChangePct = kospiPrev ? (kospiChange / kospiPrev.value) * 100 : 0;
-  const usdkrwChange = usdkrwPrev ? usdkrwLatest.value - usdkrwPrev.value : 0;
-  const usdkrwChangePct = usdkrwPrev ? (usdkrwChange / usdkrwPrev.value) * 100 : 0;
+  const kospiChange = kospiData.stats?.change ?? 0;
+  const kospiChangePct = kospiData.stats?.changePct ?? 0;
+  const usdkrwChange = usdkrwData.stats?.change ?? 0;
+  const usdkrwChangePct = usdkrwData.stats?.changePct ?? 0;
 
   const PriceCard = ({ label, value, change, changePct, color, date }) => {
     const isUp = change >= 0;

@@ -59,6 +59,8 @@ export default function Dashboard() {
   const isFetching = kospiQuery.isFetching || usdkrwQuery.isFetching;
   const error = kospiQuery.error || usdkrwQuery.error;
   const hasData = kospiQuery.data && usdkrwQuery.data;
+  const isFallback = kospiQuery.data?._fallback || usdkrwQuery.data?._fallback;
+  const fallbackUpdatedAt = kospiQuery.data?._fallbackUpdatedAt || usdkrwQuery.data?._fallbackUpdatedAt;
 
   return (
     <div
@@ -119,6 +121,28 @@ export default function Dashboard() {
             }}
           >
             Error: {error.message}
+          </div>
+        )}
+
+        {isFallback && (
+          <div
+            style={{
+              padding: "12px 20px",
+              background: "#fffbeb",
+              border: "1px solid #f59e0b",
+              borderRadius: 12,
+              color: "#92400e",
+              fontSize: 14,
+              textAlign: "center",
+              marginBottom: 16,
+            }}
+          >
+            현재 서버 연결이 불안정하여 캐시된 데이터를 표시하고 있습니다.
+            {fallbackUpdatedAt && (
+              <span style={{ marginLeft: 8, opacity: 0.7 }}>
+                (마지막 업데이트: {new Date(fallbackUpdatedAt).toLocaleDateString("ko-KR")})
+              </span>
+            )}
           </div>
         )}
 

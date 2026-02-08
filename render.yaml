@@ -1,7 +1,7 @@
 services:
   # Backend API
   - type: web
-    name: market-dashboard-api
+    name: market-index-backend
     runtime: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt

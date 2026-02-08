@@ -34,3 +34,23 @@ jobs:
           DATA_GO_KR_API_KEY: ${{ secrets.DATA_GO_KR_API_KEY }}
           EXIM_API_KEY: ${{ secrets.EXIM_API_KEY }}
         run: python cron_sync.py
+
+      # Fallback JSON 업데이트 (백엔드 서버 다운 대비)
+      - name: Update fallback data
+        env:
+          API_URL: ${{ secrets.API_BASE_URL || 'https://market-index-backend.onrender.com' }}
+        run: python scripts/update_fallback.py "$API_URL"
+        continue-on-error: true
+
+      - name: Commit fallback data to data branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # data 브랜치로 fallback JSON만 push (main 브랜치 변경 없음 = 재배포 없음)
+          git checkout -B data
+          git add frontend/public/fallback-data.json
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "chore: update fallback data $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push origin data --force
+        continue-on-error: true

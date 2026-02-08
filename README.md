@@ -1,104 +1,209 @@
-# Market Dashboard
+# 📊 Market Index Dashboard
 
-FastAPI + React dashboard with PostgreSQL-backed market series cache.
+> KOSPI 지수와 USD/KRW 환율을 한눈에 비교하고,
+> 기간별 추이와 통계를 시각적으로 확인할 수 있는 시장 지표 대시보드
 
-## Local setup
+🔗 **서비스 바로가기**
+https://market-index-frontend.onrender.com/
 
-### Backend
+---
 
-1) Create and fill `backend/.env` (see `backend/.env.example`).
-2) Install dependencies:
+## 어떤 서비스인가요?
 
-```
-cd backend
-pip install -r requirements.txt
-```
+**Market Index Dashboard**는 KOSPI 종합주가지수와 USD/KRW 환율 데이터를
+자동으로 수집하고, 하나의 차트 위에서 비교 분석할 수 있는 대시보드입니다.
 
-3) Run migrations:
+매번 증권 사이트와 환율 사이트를 따로 확인하지 않아도,
+두 지표의 흐름을 한 화면에서 직관적으로 파악할 수 있도록 만들었습니다.
 
-```
-cd backend
-alembic upgrade head
-```
+---
 
-4) Start API server:
+## 주요 기능
 
-```
-cd backend
-python -m uvicorn app.main:app --reload --port 8001
-```
+### 1. 시장 데이터 자동 수집
+- 공공데이터포털(data.go.kr)에서 KOSPI 지수를 수집합니다.
+- 한국수출입은행 API에서 USD/KRW 환율을 수집합니다.
+- GitHub Actions Cron을 통해 매일 자동으로 데이터가 갱신됩니다.
 
-### Frontend
+---
 
-```
-cd frontend
-npm install
-npm run dev
-```
+### 2. 듀얼 차트 시각화
+- KOSPI(좌축)와 USD/KRW(우축)를 하나의 차트에 겹쳐서 표시합니다.
+- 기간 선택(1일 / 1주 / 1개월 / 3개월 / 1년 / 사용자 지정)에 따라 차트가 변경됩니다.
+- 두 지표의 동행/역행 관계를 직관적으로 확인할 수 있습니다.
 
-## Batch sync
+---
 
-### Manual execution
+### 3. 기간별 통계 비교
+- 최소값, 최대값, 평균, 변화량, 변화율을 테이블로 비교합니다.
+- 선택한 기간 내 두 지표가 같은 방향으로 움직이는지(동행) 반대인지(역행) 분석합니다.
 
-Run the daily batch job (fetches latest KOSPI and USD/KRW and upserts into DB):
+---
 
-```
-cd backend
-python cron_sync.py
-```
+### 4. 백엔드 장애 대응 (Fallback)
+- 무료 티어 서버 특성상 백엔드가 내려갈 수 있습니다.
+- 서버 연결 실패 시 캐시된 JSON 데이터로 자동 전환됩니다.
+- GitHub Actions가 매일 fallback 데이터를 갱신하여 최신 상태를 유지합니다.
 
-You can also trigger it via the admin endpoint:
+---
 
-```
-POST /admin/sync?token=YOUR_ADMIN_SYNC_TOKEN
-```
+## 이런 분들께 좋아요
 
-### Automated (GitHub Actions)
+- KOSPI와 환율의 상관관계를 한눈에 보고 싶은 분
+- 기간별 시장 흐름을 빠르게 파악하고 싶은 분
+- 개인 프로젝트 / 포트폴리오 참고용 서비스를 찾는 개발자
 
-Daily sync runs automatically via GitHub Actions cron at 00:00 UTC (09:00 KST).
+---
 
-- Workflow: `.github/workflows/cron_sync.yml`
-- Manual trigger: Actions → "Daily Market Data Sync" → Run workflow
-
-## Environment variables
-
-> **Important**: 환경변수는 GitHub Secrets 또는 Render Environment Variables로 관리합니다.
-> 절대로 `.env` 파일을 Git에 커밋하지 마세요.
-
-> **Security Note**: 이미 노출된 API 키가 있다면 즉시 재발급 받으세요.
-> - 공공데이터포털: https://www.data.go.kr/
-> - 한국수출입은행: https://www.koreaexim.go.kr/
-
-### Backend
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DATABASE_URL` | Yes | PostgreSQL connection string |
-| `DATA_GO_KR_API_KEY` | Yes | 공공데이터포털 API 키 (KOSPI) |
-| `EXIM_API_KEY` | Yes | 한국수출입은행 API 키 (환율) |
-| `ADMIN_SYNC_TOKEN` | No | /admin/sync 엔드포인트용 토큰 |
+## 기술 스택
 
 ### Frontend
+- React 19
+- React Query (TanStack Query v5)
+- Recharts
+- Vite
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `VITE_API_BASE_URL` | No | Backend API URL (default: http://localhost:8001) |
+### Backend
+- Python 3.11
+- FastAPI
+- SQLAlchemy 2.0
+- Alembic
 
-### GitHub Secrets (for Actions)
+### Database
+- PostgreSQL (Render Free Tier)
 
-Repository Settings → Secrets and variables → Actions에서 설정:
+### Infra
+- Render (Static Site + Web Service)
+- GitHub Actions (Daily Cron Sync)
 
-- `DATABASE_URL`: Render PostgreSQL **External Database URL**
-- `DATA_GO_KR_API_KEY`
-- `EXIM_API_KEY`
-- `ADMIN_SYNC_TOKEN`
+---
 
-## Deployment
+## 만든 이유
 
-### Render
+> "주식 차트를 만들고 싶다" 보다는
+> **공공 API에서 데이터를 수집하고, 가공하고, 시각화하는 전체 파이프라인을 직접 설계해보고 싶어서 만든 프로젝트**입니다.
 
-- Backend: Web Service (Python)
-- Frontend: Static Site (Vite)
-- Database: PostgreSQL
+- 외부 공공 API 데이터 수집
+- 시계열 데이터 저장 및 통계 산출
+- 프론트엔드 차트 시각화
+- 무료 인프라 환경에서의 안정적 운영
 
-GitHub Actions cron이 External Database URL로 직접 데이터를 upsert합니다.
+실무에서 마주치는 데이터 파이프라인 구조를 직접 경험하는 것이 목표였습니다.
+
+아래의 내용은 이 프로젝트의 **기술적 강점**에 대한 서술입니다.
+
+---
+
+## 기술적 강점
+
+### 1. 공공 API 기반 데이터 수집 파이프라인
+
+본 서비스는 두 개의 공공 API에서 시장 데이터를 자동으로 수집하는 구조로 설계되었습니다.
+- 공공데이터포털 API로 KOSPI 종가 수집 (최근 10거래일 backfill)
+- 한국수출입은행 API로 USD/KRW 환율 수집 (최근 7일 backfill)
+- 주말/공휴일 자동 스킵 처리
+- Upsert 전략으로 중복 데이터 충돌 없이 자동 처리
+
+수집 로직은 각 데이터 소스가 독립적으로 동작하여, 한쪽 API에 장애가 생겨도 다른 데이터 수집에 영향을 주지 않습니다.
+
+---
+
+### 2. 시계열 데이터 설계 및 통계 산출
+
+시장 데이터는 PostgreSQL에 시계열 구조로 저장됩니다.
+- `(metric, date)` 유니크 제약으로 데이터 정합성 보장
+- 기간별 쿼리 최적화 (1d, 1w, 1m, 3m, 1y, custom)
+- 두 지표의 공통 거래일만 추출하여 차트 정합성 확보
+- 최소 2개 데이터 포인트 보장 로직 (데이터 부족 시 자동 확장)
+
+통계 산출은 서버 사이드에서 처리합니다:
+- 최소/최대/평균값 산출
+- 기간 시작일 대비 변화량 및 변화율 계산
+- 프론트엔드는 가공된 데이터를 그대로 렌더링
+
+---
+
+### 3. 듀얼 축 차트 및 지표 비교 UI
+
+두 개의 서로 다른 스케일을 가진 지표를 하나의 차트에 표현합니다.
+- KOSPI(좌축, 2000~5000대)와 환율(우축, 1300~1500대)을 겹쳐 표시
+- 인덱스 기반 매칭으로 거래일이 다른 두 데이터를 정렬
+- 기간 선택에 따라 차트, 현재가, 통계 테이블이 모두 연동
+- 동행/역행 분석으로 두 지표의 상관관계를 시각적으로 제공
+
+---
+
+### 4. Stateless 서버 + Fallback 설계
+
+서버는 상태를 전혀 가지지 않는 Stateless 구조로 설계되었습니다.
+
+- 무료 티어를 제공하는 Render 서비스를 이용했습니다.
+- Free tier 서버 환경 특성상 비활성 시 자동으로 내려가지만, 서비스 영향을 최소화했습니다.
+- 모든 상태는 외부 저장소(PostgreSQL)에 존재합니다.
+
+백엔드가 내려가더라도:
+- 10초 타임아웃 후 자동으로 fallback JSON으로 전환
+- GitHub raw URL에서 최신 캐시 데이터를 우선 시도
+- 로컬 static 파일을 2차 fallback으로 사용
+- UI에 "캐시된 데이터" 안내 배너를 표시
+
+즉:
+
+> 백엔드 장애 ≠ 서비스 장애
+
+라는 구조로 설계되어 있습니다.
+
+---
+
+### 5. 자동화된 데이터 갱신 (GitHub Actions)
+
+데이터 수집과 fallback 갱신이 완전히 자동화되어 있습니다.
+- GitHub Actions Cron이 매일 00:00 UTC(한국시간 09:00)에 실행
+- PostgreSQL에 최신 시장 데이터를 upsert
+- Fallback JSON을 생성하여 `data` 브랜치에 push (main 브랜치 변경 없음 = 프론트엔드 재배포 없음)
+- Postgres Advisory Lock으로 중복 실행 방지
+
+수동 트리거(workflow_dispatch)도 지원하여 필요 시 즉시 데이터를 갱신할 수 있습니다.
+
+---
+
+### 6. 프론트엔드 데이터 캐싱 전략
+
+React Query를 활용한 클라이언트 사이드 캐싱으로 불필요한 API 호출을 줄입니다.
+- staleTime 5분 설정으로 동일 기간 재조회 시 캐시 사용
+- 기간/날짜 조합별 독립 캐시 키 관리
+- 유효하지 않은 날짜 범위에서는 쿼리 자체를 비활성화 (enabled 플래그)
+- 로딩/에러/데이터 상태를 명확히 분리하여 UX 최적화
+
+---
+
+### 7. 환경 분리 설정 구조
+
+설정은 다음 구조로 분리되어 있습니다.
+- `backend/.env` → 로컬 개발 환경 설정
+- Render Environment Variables → 운영 환경 설정
+- GitHub Secrets → CI/CD 환경 설정
+- `VITE_` 접두사 환경변수 → 프론트엔드 빌드 타임 주입
+
+이를 통해:
+- GitHub에 민감 정보 노출 없음
+- 로컬 / 운영 환경 코드 수정 없이 동일 동작
+- Render, AWS, 로컬 어디서든 동일 구조로 실행 가능
+
+---
+
+## 요약
+
+이 프로젝트는 기능 자체보다는
+**데이터를 어떻게 수집하고, 어떻게 가공하고, 어떻게 안정적으로 서비스할 것인가에 더 초점을 둔 프로젝트**입니다.
+
+단순히 "동작하는 차트"를 만드는 것이 아니라,
+- 공공 API 데이터는 어떻게 수집하고 정합성을 보장할지, (cron + upsert)
+- 시계열 데이터는 어떤 구조로 저장하고 통계를 산출할지, (PostgreSQL + 서버사이드 통계)
+- 서버가 언제든 내려갈 수 있는 환경에서 어떻게 사용자 경험을 유지할지, (fallback + 캐싱)
+- 데이터 갱신은 어떻게 자동화하고 재배포 없이 운영할지 (GitHub Actions + data 브랜치)
+
+를 하나의 서비스 흐름으로 직접 고민하고 구성했습니다.
+
+이 프로젝트는 제가 생각하는
+**"실무에서 통하는 개발"에 대한 기준을 정리한 내용**입니다.
